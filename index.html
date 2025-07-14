@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paragraph Summarizer By Team 6 LLM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        overflow-y: auto;
+      }
+      .dark-mode {
+        background-color: #1a202c;
+        color: #f7fafc;
+      }
+      .dark-mode .bg-white {
+        background-color: #2d3748;
+        color: #f7fafc;
+      }
+      .dark-mode .text-gray-800 {
+        color: #f7fafc;
+      }
+      .dark-mode .text-gray-600 {
+        color: #cbd5e0;
+      }
+      .dark-mode .bg-gray-50 {
+        background-color: #4a5568;
+      }
+      .dark-mode .prose {
+        color: #f7fafc;
+      }
+
+      .summarize-btn {
+        transition: all 0.3s ease;
+      }
+      .summarize-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      }
+      .result-box {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.5s ease;
+      }
+      .result-box.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #bg-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url("https://lh3.googleusercontent.com/p/AF1QipNmOwQhySyI_B5cBRzQyQkcaIxolpXG4ENyo0MP=s1360-w1360-h1020-rw");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        z-index: -1;
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bg-canvas" class="fixed inset-0 -z-10"></div>
+    <div class="container mx-auto px-4 py-12 relative z-10">
+      <!-- Dark/Light Mode Toggle -->
+      <div class="fixed top-4 right-4 z-20">
+        <button
+          id="theme-toggle"
+          class="p-2 rounded-full bg-gray-200 dark:bg-gray-700"
+        >
+          <span id="theme-icon">🌞</span>
+        </button>
+      </div>
+
+      <!-- Header -->
+      <header class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-gray-800 mb-4">
+          Paragraph Summarizer By Team 6
+        </h1>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+          An LLM-powered tool that condenses lengthy paragraphs into concise
+          summaries
+        </p>
+      </header>
+
+      <!-- Main Content -->
+      <div
+        class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden"
+      >
+        <!-- Input Section -->
+        <div class="p-8 border-b border-gray-200">
+          <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+            Enter your paragraph
+          </h2>
+          <textarea
+            id="input-text"
+            class="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Paste your paragraph here..."
+          ></textarea>
+
+          <div class="mt-4 flex flex-col sm:flex-row gap-4">
+            <div class="flex items-center gap-3">
+              <span class="text-gray-600">Summary Level:</span>
+              <div class="flex gap-2">
+                <input
+                  type="radio"
+                  id="easy-strength"
+                  name="strength"
+                  value="easy"
+                  checked
+                  class="hidden peer/easy"
+                />
+                <label
+                  for="easy-strength"
+                  class="px-3 py-1 bg-gray-100 rounded-lg cursor-pointer peer-checked/easy:bg-blue-600 peer-checked/easy:text-white"
+                  >Easy</label
+                >
+
+                <input
+                  type="radio"
+                  id="medium-strength"
+                  name="strength"
+                  value="medium"
+                  class="hidden peer/medium"
+                />
+                <label
+                  for="medium-strength"
+                  class="px-3 py-1 bg-gray-100 rounded-lg cursor-pointer peer-checked/medium:bg-blue-600 peer-checked/medium:text-white"
+                  >Medium</label
+                >
+
+                <input
+                  type="radio"
+                  id="hard-strength"
+                  name="strength"
+                  value="hard"
+                  class="hidden peer/hard"
+                />
+                <label
+                  for="hard-strength"
+                  class="px-3 py-1 bg-gray-100 rounded-lg cursor-pointer peer-checked/hard:bg-blue-600 peer-checked/hard:text-white"
+                  >Hard</label
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex justify-end">
+            <button
+              id="summarize-btn"
+              class="summarize-btn px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            >
+              Summarize Paragraph
+            </button>
+          </div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="result-section" class="p-8 hidden">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold text-gray-800">Summary</h2>
+            <div class="flex gap-2">
+              <span
+                id="original-word-count"
+                class="text-sm text-gray-500"
+              ></span>
+              <span id="word-count" class="text-sm text-gray-500"></span>
+            </div>
+          </div>
+
+          <div
+            id="summary-container"
+            class="result-box bg-gray-50 p-6 rounded-lg"
+          >
+            <div class="flex items-center mb-4">
+              <div
+                class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-6 w-6 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+              </div>
+              <p class="font-medium text-gray-700">
+                Your summarized text will appear here
+              </p>
+            </div>
+            <div id="summary-text" class="prose max-w-none text-gray-700"></div>
+          </div>
+
+          <div class="mt-6 flex justify-end">
+            <button
+              id="copy-btn"
+              class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 mr-3"
+            >
+              Copy Summary
+            </button>
+            <button
+              id="new-summary-btn"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            >
+              New Summary
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- How it Works Section -->
+      <div
+        class="max-w-4xl mx-auto mt-12 bg-white rounded-xl shadow-lg overflow-hidden"
+      >
+        <div class="p-8">
+          <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+            How It Works
+          </h2>
+          <div class="grid md:grid-cols-3 gap-6">
+            <div class="bg-blue-50 p-6 rounded-lg">
+              <div
+                class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-6 w-6 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+              </div>
+              <h3 class="font-medium text-gray-800 mb-2">Input Paragraph</h3>
+              <p class="text-gray-600">
+                Paste your long paragraphs or articles into the text box.
+              </p>
+            </div>
+            <div class="bg-purple-50 p-6 rounded-lg">
+              <div
+                class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-6 w-6 text-purple-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                  />
+                </svg>
+              </div>
+              <h3 class="font-medium text-gray-800 mb-2">AI Processing</h3>
+              <p class="text-gray-600">
+                Our LLM identifies key points and main ideas.
+              </p>
+            </div>
+            <div class="bg-green-50 p-6 rounded-lg">
+              <div
+                class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-6 w-6 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                  />
+                </svg>
+              </div>
+              <h3 class="font-medium text-gray-800 mb-2">Concise Summary</h3>
+              <p class="text-gray-600">
+                Receive a clear, concise summary you can use immediately.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Theme Toggle Functionality
+        const themeToggle = document.getElementById("theme-toggle");
+        const themeIcon = document.getElementById("theme-icon");
+
+        themeToggle.addEventListener("click", function () {
+          document.body.classList.toggle("dark-mode");
+
+          if (document.body.classList.contains("dark-mode")) {
+            themeIcon.textContent = "🌙";
+          } else {
+            themeIcon.textContent = "🌞";
+          }
+        });
+
+        // DOM Elements
+        const inputText = document.getElementById("input-text");
+        const summarizeBtn = document.getElementById("summarize-btn");
+        const resultSection = document.getElementById("result-section");
+        const summaryText = document.getElementById("summary-text");
+        const wordCount = document.getElementById("word-count");
+        const copyBtn = document.getElementById("copy-btn");
+        const newSummaryBtn = document.getElementById("new-summary-btn");
+        const summaryContainer = document.getElementById("summary-container");
+
+        // Summarize button click handler
+        summarizeBtn.addEventListener("click", async function () {
+          const text = inputText.value.trim();
+
+          if (!text) {
+            alert("Please enter some text to summarize");
+            return;
+          }
+
+          // Show loading state
+          summarizeBtn.disabled = true;
+          summarizeBtn.innerHTML =
+            '<span class="inline-block mr-2 animate-spin">⚙️</span> Summarizing...';
+
+          try {
+            const response = await fetch("http://localhost:3000/summarize", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text,
+                strength: document.querySelector(
+                  'input[name="strength"]:checked'
+                ).value,
+              }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Unknown error");
+            const summary = data.summary;
+
+            // Display results
+            summaryText.textContent = summary;
+            wordCount.textContent = `${countWords(summary)} words (summary)`;
+            document.getElementById(
+              "original-word-count"
+            ).textContent = `${countWords(text)} words (original)`;
+
+            // Show result section with animation
+            resultSection.classList.remove("hidden");
+            setTimeout(() => {
+              summaryContainer.classList.add("show");
+            }, 50);
+          } catch (error) {
+            console.error("Error:", error);
+            alert(
+              "Failed to summarize text. Please check console for details."
+            );
+          } finally {
+            summarizeBtn.disabled = false;
+            summarizeBtn.textContent = "Summarize Paragraph";
+          }
+        });
+
+        // Copy button click handler
+        copyBtn.addEventListener("click", function () {
+          const range = document.createRange();
+          range.selectNode(summaryText);
+          window.getSelection().removeAllRanges();
+          window.getSelection().addRange(range);
+          document.execCommand("copy");
+          window.getSelection().removeAllRanges();
+
+          // Show copied feedback
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+          }, 2000);
+        });
+
+        // New Summary button click handler
+        newSummaryBtn.addEventListener("click", function () {
+          summaryContainer.classList.remove("show");
+          setTimeout(() => {
+            inputText.focus();
+            resultSection.classList.add("hidden");
+            wordCount.textContent = "";
+            document.getElementById("original-word-count").textContent = "";
+          }, 500);
+        });
+
+        // Helper function to count words
+        function countWords(text) {
+          return text.trim().split(/\s+/).length;
+        }
+      });
+    </script>
+  </body>
+</html>
